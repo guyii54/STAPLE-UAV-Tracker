@@ -10,70 +10,145 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include <time.h>
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <opencv2/highgui.hpp>
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <opencv2/core.hpp>
+#include <opencv2/videoio.hpp>
+
+#define TEST_FPS
+#define SAVE_VIDEO
+
+using namespace cv;
+
+
 cv::Rect_<float> getAxisAlignedBB(std::vector<cv::Point2f> polygon);
 std::vector<cv::Rect_<float>> getgroundtruth(std::string txt_file);
 
 int main(int argc, char * argv[])
 {
-    std::string sequence = "/sequence";
 
-    if (argc >= 2) {
-        sequence = std::string("/vot2015/") + argv[1];
-    }
+      cv::Mat image;
+      cv::Rect_<float> location;
+      double fps;
+      double time_used;
+      int frame_count;
+//    std::string sequence = "/sequence";
 
-    std::string video_base_path = "..";
-    std::string pattern_jpg = video_base_path + sequence + "/*.jpg";
-    std::string txt_base_path = video_base_path + sequence + "/groundtruth.txt";
+//    if (argc >= 2) {
+//        sequence = std::string("/vot2015/") + argv[1];
+//    }
 
-    std::vector<cv::String> image_files;
-    cv::glob(pattern_jpg, image_files);
-    if (image_files.size() == 0)
-        return -1;
+//    std::string video_base_path = "..";
+//    std::string pattern_jpg = video_base_path + sequence + "/*.jpg";
+//    std::string pattern_jpg = video_base_path + sequence + "/*.jpg";
+//    std::string txt_base_path = video_base_path + sequence + "/groundtruth.txt";
 
-    std::vector<cv::Rect_<float>> groundtruth_rect;
-    groundtruth_rect = getgroundtruth(txt_base_path);
+    std::string read_path = "/home/nvidia/Videos/s_video/";
+    std::string filename;
+    std::string suffix = "/1(%d).jpg";
+    std::cin >> filename;
+
+//    std::string read_path = "/home/nvidia/Videos/s_video/";
+//    std::string filename;
+//    std::string suffix = ".mp4";
+//    std::cin>>filename;
+
+
+    std::string w_read_path = read_path+filename+suffix;
+//    std::string n_read_path = read_path+filename+files;
+
+
+    VideoCapture cap(w_read_path);
+    cap >> image;
+
+
+#ifdef SAVE_VIDEO
+    std::string write_path="../processed/";
+    std::string w_write_path = write_path+filename+".avi";
+    VideoWriter writer(w_write_path,CV_FOURCC('M','J','P','G'),24,Size(640,360));
+//    VideoWriter writer(w_write_path,CV_FOURCC('M','J','P','G'),24,Size(1280,720));
+#endif
+
+//    std::vector<cv::String> image_files;
+//    cv::glob(n_read_path, image_files);
+
+
+//    if (image_files.size() == 0)
+//        return -1;
+//    image = cv::imread(image_files[1]);
+
+//    std::vector<cv::Rect_<float>> groundtruth_rect;
+
+//    groundtruth_rect = getgroundtruth(txt_base_path);
     //for (size_t i = 0; i < groundtruth_rect.size(); ++i)
     //  std::cout << i+1 << '\t' <<groundtruth_rect[i] << std::endl;
 
     STAPLE_TRACKER staple;
 
-    cv::Rect_<float> location = groundtruth_rect[0];
-    cv::Mat image;
+//    cv::Rect_<float> location = groundtruth_rect[0];
+//    namedWindow("frame");
     std::vector<cv::Rect_<float>> result_rects;
-    int64 tic, toc;
-    double time = 0;
+//    double time = 0;
     bool show_visualization = true;
 
-    for (unsigned int frame = 0; frame < image_files.size(); ++frame) {
-        image = cv::imread(image_files[frame]);
-        tic = cv::getTickCount();
-        if (frame == 0){
+//    std::cout<<"total:"<<image_files.size()<<std::endl;
+
+    imshow("STAPLE", image);
+    location = selectROI("STAPLE",image );
+
+#ifdef TEST_FPS
+    double start_fps,end_fps,dur_fps;
+#endif
+
+    for (frame_count=1;; frame_count++)
+    {
+//        image = cv::imread(image_files[frame]);
+
+        if (frame_count == 1)
+        {
             staple.tracker_staple_initialize(image, location);
             staple.tracker_staple_train(image, true);
-        } else {
+        }
+        else
+        {
+            cap >> image;
+            start_fps = clock();
             location = staple.tracker_staple_update(image);
             staple.tracker_staple_train(image, false);
         }
+#ifdef TEST_FPS
+        end_fps = clock();
+        dur_fps =end_fps-start_fps;
+        time_used = (double)(dur_fps)/CLOCKS_PER_SEC;
+        fps =1/time_used;
+#endif
 
-        toc = cv::getTickCount() - tic;
-        time += toc;
         result_rects.push_back(location);
 
-        if (show_visualization) {
-            cv::putText(image, std::to_string(frame + 1), cv::Point(20, 40), 6, 1,
+        if (show_visualization)
+        {
+            cv::putText(image, std::to_string(fps), cv::Point(20, 40), 6, 1,
                 cv::Scalar(0, 255, 255), 2);
-            cv::rectangle(image, groundtruth_rect[frame], cv::Scalar(0, 255, 0), 2);
+//            cv::rectangle(image, groundtruth_rect[frame], cv::Scalar(0, 255, 0), 2);
             cv::rectangle(image, location, cv::Scalar(0, 128, 255), 2);
             cv::imshow("STAPLE", image);
 
+#ifdef SAVE_VIDEO
+        writer << image;
+#endif
             char key = cv::waitKey(10);
             if (key == 27 || key == 'q' || key == 'Q')
                 break;
         }
     }
-    time = time / double(cv::getTickFrequency());
-    double fps = double(result_rects.size()) / time;
-    std::cout << "fps:" << fps << std::endl;
     cv::destroyAllWindows();
 
     return 0;
