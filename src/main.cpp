@@ -24,9 +24,11 @@
 #include <opencv2/videoio.hpp>
 
 #define TEST_FPS
-#define SAVE_VIDEO
+// #define SAVE_VIDEO
+
 
 using namespace cv;
+using namespace std;
 
 
 cv::Rect_<float> getAxisAlignedBB(std::vector<cv::Point2f> polygon);
@@ -37,23 +39,26 @@ int main(int argc, char * argv[])
 
       cv::Mat image;
       cv::Rect_<float> location;
+      cv::Rect_<float> truebound;
+      cv::Rect_<float> overlap;
       double fps;
+      double av_fps = 1;
+      float iou;
+      float av_iou = 1;
       double time_used;
       int frame_count;
-//    std::string sequence = "/sequence";
 
-//    if (argc >= 2) {
-//        sequence = std::string("/vot2015/") + argv[1];
-//    }
+      
+      std::string fpsSTRING;	//fps
+      char fpsvalue[10];
+      std::string iouSTRING;	//fps
+      char iouvalue[10];     
 
-//    std::string video_base_path = "..";
-//    std::string pattern_jpg = video_base_path + sequence + "/*.jpg";
-//    std::string pattern_jpg = video_base_path + sequence + "/*.jpg";
-//    std::string txt_base_path = video_base_path + sequence + "/groundtruth.txt";
 
     std::string read_path = "/home/nvidia/Videos/s_video/";
     std::string filename;
     std::string suffix = "/1(%d).jpg";
+    std::string groundtruthsuffix = "/groundtruth.txt";
     std::cin >> filename;
 
 //    std::string read_path = "/home/nvidia/Videos/s_video/";
@@ -61,9 +66,8 @@ int main(int argc, char * argv[])
 //    std::string suffix = ".mp4";
 //    std::cin>>filename;
 
-
+    std::string groundtruth_path = read_path+filename+groundtruthsuffix;
     std::string w_read_path = read_path+filename+suffix;
-//    std::string n_read_path = read_path+filename+files;
 
 
     VideoCapture cap(w_read_path);
@@ -77,32 +81,29 @@ int main(int argc, char * argv[])
 //    VideoWriter writer(w_write_path,CV_FOURCC('M','J','P','G'),24,Size(1280,720));
 #endif
 
-//    std::vector<cv::String> image_files;
-//    cv::glob(n_read_path, image_files);
+   std::vector<cv::Rect_<float>> groundtruth_rect;
 
-
-//    if (image_files.size() == 0)
-//        return -1;
-//    image = cv::imread(image_files[1]);
-
-//    std::vector<cv::Rect_<float>> groundtruth_rect;
-
-//    groundtruth_rect = getgroundtruth(txt_base_path);
-    //for (size_t i = 0; i < groundtruth_rect.size(); ++i)
-    //  std::cout << i+1 << '\t' <<groundtruth_rect[i] << std::endl;
+   groundtruth_rect = getgroundtruth(groundtruth_path);
+   
+   
+//    for (size_t i = 0; i < groundtruth_rect.size(); ++i)
+//      std::cout << i+1 << '\t' <<groundtruth_rect[i] << std::endl;
 
     STAPLE_TRACKER staple;
 
 //    cv::Rect_<float> location = groundtruth_rect[0];
 //    namedWindow("frame");
-    std::vector<cv::Rect_<float>> result_rects;
+//     std::vector<cv::Rect_<float>> result_rects;
 //    double time = 0;
+//    std::cout<<"total:"<<image_files.size()<<std::endl;
     bool show_visualization = true;
 
-//    std::cout<<"total:"<<image_files.size()<<std::endl;
-
+   
+    
+    cv::rectangle(image, groundtruth_rect[0], cv::Scalar(0, 255, 0), 2);
     imshow("STAPLE", image);
-    location = selectROI("STAPLE",image );
+    location = groundtruth_rect[0];
+//     location = selectROI("STAPLE",image);
 
 #ifdef TEST_FPS
     double start_fps,end_fps,dur_fps;
@@ -120,34 +121,60 @@ int main(int argc, char * argv[])
         else
         {
             cap >> image;
+	    if(image.empty())
+	    {
+	      av_iou = av_iou/frame_count;
+	      cout<<"video empty!"<<endl;
+	      break;
+	    }
             start_fps = clock();
             location = staple.tracker_staple_update(image);
             staple.tracker_staple_train(image, false);
+	    overlap = location & groundtruth_rect[frame_count];
         }
 #ifdef TEST_FPS
         end_fps = clock();
         dur_fps =end_fps-start_fps;
         time_used = (double)(dur_fps)/CLOCKS_PER_SEC;
         fps =1/time_used;
+// 	av_fps += fps;
 #endif
 
-        result_rects.push_back(location);
+//         result_rects.push_back(location);
+	iou = overlap.area()/(location.area()+groundtruth_rect[frame_count].area()-overlap.area());
+	av_iou += iou;
 
         if (show_visualization)
         {
-            cv::putText(image, std::to_string(fps), cv::Point(20, 40), 6, 1,
-                cv::Scalar(0, 255, 255), 2);
-//            cv::rectangle(image, groundtruth_rect[frame], cv::Scalar(0, 255, 0), 2);
-            cv::rectangle(image, location, cv::Scalar(0, 128, 255), 2);
-            cv::imshow("STAPLE", image);
+	  sprintf(fpsvalue,"%.2f",fps);
+	  fpsSTRING = "fps:";
+	  fpsSTRING += fpsvalue;
+	  
+	  sprintf(iouvalue,"%.3f",iou);
+	  iouSTRING = "iou:";
+	  iouSTRING += iouvalue;
+	  
+	  cv::putText(image, fpsSTRING,cv::Point(20, 40),FONT_HERSHEY_SIMPLEX, 1,
+	      cv::Scalar(0, 255, 255), 2);
+	  cv::putText(image, iouSTRING,cv::Point(20, 68),FONT_HERSHEY_SIMPLEX,1,
+	      cv::Scalar(0, 255, 255), 2);
+	  cv::rectangle(image, groundtruth_rect[frame_count], cv::Scalar(0, 255, 0), 2);
+	  cv::rectangle(image, location, cv::Scalar(0, 0, 255), 2);
+// 	    cv::rectangle(image, overlap, cv::Scalar(0, 0, 255), 2);
+	  cv::imshow("STAPLE", image);
 
 #ifdef SAVE_VIDEO
         writer << image;
 #endif
             char key = cv::waitKey(10);
             if (key == 27 || key == 'q' || key == 'Q')
-                break;
-        }
+	    {
+	      av_iou = av_iou/frame_count;
+	      cout<<"average of iou:"<<av_iou<<endl;
+	      break;
+        
+	    }
+	}
     }
     cv::destroyAllWindows();
 
@@ -181,17 +208,19 @@ std::vector<cv::Rect_<float>> getgroundtruth(std::string txt_file)
         std::cout << "Ground truth file " << txt_file
         << " can not be read" << std::endl;
     std::string line;
-    float x1, y1, x2, y2, x3, y3, x4, y4;
-    while (getline(gt, line)) {
-        std::replace(line.begin(), line.end(), ',', ' ');
+//     float x1, y1, x2, y2, x3, y3, x4, y4;
+    float xmin,xmax,ymin,ymax;
+    while (getline(gt, line)) 
+    {
+//         std::replace(line.begin(), line.end(), ',', ' ');
         std::stringstream ss;
         ss.str(line);
-        ss >> x1 >> y1 >> x2 >> y2 >> x3 >> y3 >> x4 >> y4;
+        ss >> xmin>> xmax >> ymin >>ymax;
         std::vector<cv::Point2f>polygon;
-        polygon.push_back(cv::Point2f(x1, y1));
-        polygon.push_back(cv::Point2f(x2, y2));
-        polygon.push_back(cv::Point2f(x3, y3));
-        polygon.push_back(cv::Point2f(x4, y4));
+        polygon.push_back(cv::Point2f(xmin,ymin));
+        polygon.push_back(cv::Point2f(xmax,ymin));
+        polygon.push_back(cv::Point2f(xmax,ymax));
+        polygon.push_back(cv::Point2f(xmin,ymax));
         rects.push_back(getAxisAlignedBB(polygon)); //0-index
     }
     gt.close();
