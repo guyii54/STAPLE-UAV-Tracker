@@ -120,7 +120,7 @@ private:
     float max_scale_factor;
     cv::Size base_target_sz;
 
-    cv::Mat ysf;
+    cv::Mat ysf;	//为尺度滤波器构造的高斯得分
     cv::Mat sf_den;
     cv::Mat sf_num;
 

@@ -650,6 +650,32 @@ Maximum number of threads per block:           1024
 TLD论文  
 STAPLE论文  
 
+4.9.  
+将数据集的批量xml文件使用tinyxml库转成了groundtruth.txt，方便使用  
+加入了iou指标的计算  
+决定以平均iou来判定跟踪效果  
+
+4.12.  
+使用了fdsst中的多尺度算法进行了尺度适应性的调整  
+
+
+
+## STAPLE 变量表
+
+|变量名				|内容							|
+|:-|:-|
+|target_sz			|roi的大小						|	
+|norm_target_sz		|用fixed_area调整至相对固定的大小	|
+|base_target_size	|第一帧的大小roi					|
+|bg_area			|背景区域，就是加了padding后的	|
+|fg_area			|inner区域，用来提取color特征	|
+|area_resize_factor	|
+
+
+
+
+
+
 
 
 

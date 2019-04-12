@@ -58,6 +58,7 @@ void STAPLE_TRACKER::initializeAllAreas(const cv::Mat &im)
     fg_area.width = round(cfg.target_sz.width - avg_dim * cfg.inner_padding);
     fg_area.height = round(cfg.target_sz.height - avg_dim * cfg.inner_padding);
 
+    //适应实际图像，并让其为2的倍数
     // saturate to image size
     cv::Size imsize = im.size();
 
@@ -402,7 +403,7 @@ void STAPLE_TRACKER::tracker_staple_initialize(const cv::Mat &im, cv::Rect_<floa
         cfg.grayscale_sequence = true;
     }
 
-    // xxx: only support 3 channels, TODO: fix updateHistModel
+    // xxx: only support 3 channels, TODO: fix updateHistModel,
     //assert(!cfg.grayscale_sequence);
 
     // double cx = region.x + region.width / 2.0;
@@ -1260,7 +1261,8 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
     cv::Mat likelihood_map;
     getColourMap(im_patch_pwp, likelihood_map);
     //[likelihood_map] = getColourMap(im_patch_pwp, bg_hist, fg_hist, p.n_bins, p.grayscale_sequence);
-
+    //bg_hist:background histogram
+    //fg_hist:foreground histogram
     // each pixel of response_pwp loosely represents the likelihood that
     // the target (of size norm_target_sz) is centred on it
     cv::Mat response_pwp;
@@ -1360,9 +1362,13 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
             scale_factor = max_scale_factor;
         }
 
+        std::cout<<"scale factor:"<<scale_factors.at<float>(recovered_scale)<<std::endl;
         // use new scale to update bboxes for target, filter, bg and fg models
         target_sz.width = round(base_target_sz.width * scale_factor);
         target_sz.height = round(base_target_sz.height * scale_factor);
+	
+// 	location.width = target_sz.width;
+// 	location.height = target_sz.height;
 
         float avg_dim = (target_sz.width + target_sz.height)/2.0;
 

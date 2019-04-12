@@ -24,7 +24,7 @@
 #include <opencv2/videoio.hpp>
 
 #define TEST_FPS
-// #define SAVE_VIDEO
+#define SAVE_VIDEO
 
 
 using namespace cv;
@@ -124,6 +124,7 @@ int main(int argc, char * argv[])
 	    if(image.empty())
 	    {
 	      av_iou = av_iou/frame_count;
+	      cout<<"av_iou:"<<av_iou<<endl;
 	      cout<<"video empty!"<<endl;
 	      break;
 	    }
