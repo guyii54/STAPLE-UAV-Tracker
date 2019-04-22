@@ -28,7 +28,7 @@ struct staple_cfg
     double lambda = 1e-3;               // egularization weight
     double learning_rate_cf = 0.01;     // HOG model learning rate
 //     double merge_factor = 0.3;          // fixed interpolation factor - how to linearly combine the two responses
-    double merge_factor = 0.3;
+    double merge_factor = 0.7;
     const char * merge_method = "const_factor";
     bool den_per_channel = false;
 
@@ -96,6 +96,8 @@ protected:
     void getCenterLikelihood(const cv::Mat &object_likelihood, cv::Size m, cv::Mat& center_likelihood);
     void mergeResponses(const cv::Mat &response_cf, const cv::Mat &response_pwp, cv::Mat &response);
     void getScaleSubwindow(const cv::Mat &im, cv::Point_<float> centerCoor, cv::Mat &output);
+    void sumMat(cv::Mat &im, double sum, double mean);
+    void getconfidence(cv::Mat response, double &confidence, double maxVal, cv::Point maxLoc);
 
 private:
     

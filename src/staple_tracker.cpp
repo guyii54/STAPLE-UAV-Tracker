@@ -131,6 +131,8 @@ void STAPLE_TRACKER::initializeAllAreas(const cv::Mat &im)
 //   Returns sub-window of image IM centered at POS ([y, x] coordinates),
 //   with size MODEL_SZ ([height, width]). If any pixels are outside of the image,
 //   they will replicate the values at the borders
+//1.subwindow with patch_sz
+//2.resize with scale_model_sz
 void STAPLE_TRACKER::getSubwindow(const cv::Mat &im, cv::Point_<float> centerCoor, cv::Size model_sz, cv::Size scaled_sz, cv::Mat &output)
 {
     cv::Size sz = scaled_sz; // scale adaptation
@@ -448,6 +450,7 @@ void STAPLE_TRACKER::tracker_staple_initialize(const cv::Mat &im, cv::Rect_<floa
     cv::Mat y;
     gaussianResponse(cf_response_size, output_sigma, y);
     cv::dft(y, yf);
+//    std::cout<<"yf:"<<yf.rows<<"*"<<yf.cols<<std::endl;
 
     // SCALE ADAPTATION INITIALIZATION
     if (cfg.scale_adaptation)
@@ -1269,13 +1272,14 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
     (newsz.height % 2 == 0) && (newsz.height -= 1);
 
     cropFilterResponse(response_cf, newsz, response_cf);
-
+    //response_cf
     if (cfg.hog_cell_size > 1)
     {
         cv::Mat temp;
         mexResize(response_cf, temp, norm_delta_area, "auto");
         response_cf = temp; // xxx: low performance
     }
+//    std::cout<<"response_cf:"<<response_cf.rows<<"*"<<response_cf.cols<<std::endl;
 
     cv::Mat likelihood_map;
     getColourMap(im_patch_pwp, likelihood_map);
@@ -1286,10 +1290,26 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
     // the target (of size norm_target_sz) is centred on it
     cv::Mat response_pwp;
     getCenterLikelihood(likelihood_map, norm_target_sz, response_pwp);
+//    std::cout<<"response_pwp:"<<response_pwp.rows<<"*"<<response_pwp.cols<<std::endl;
+
 
     // ESTIMATION
+
+
+    double cfval,confidence_cf;
+    cv::Point cfLoc;
+    getconfidence(response_cf,confidence_cf,cfval,cfLoc);
+
+    double pwpval,confidence_pwp;
+    cv::Point pwpLoc;
+    getconfidence(response_pwp,confidence_pwp,pwpval,pwpLoc);
+
     cv::Mat response;
+//    cfg.merge_factor = confidence_pwp/(confidence_cf+confidence_pwp);
+    printf("c_hog:%f\t c_cn:%f\t factor:%f\n",confidence_cf,confidence_pwp,cfg.merge_factor);
     mergeResponses(response_cf, response_pwp, response);
+//    std::cout<<"cf response:"<<cfval<<std::endl;
+//    std::cout<<"pwp response:"<<pwpval<<std::endl;
 
     double maxVal = 0;
     cv::Point maxLoc;
@@ -1373,7 +1393,7 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
 
         int recovered_scale =  maxLoc.x;
 //        std::cout<<"maxVal:"<<maxVal<<std::endl;
-        printf("step: %0.3f\t%d\n",scale_factors.at<float>(recovered_scale),recovered_scale);
+//        printf("step: %0.3f\t%d\n",scale_factors.at<float>(recovered_scale),recovered_scale);
         // set the scale
         scale_factor = scale_factor * scale_factors.at<float>(recovered_scale);
 
@@ -1415,3 +1435,51 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
 
     return location;
 }
+
+void STAPLE_TRACKER::getconfidence(cv::Mat response, double &confidence, double maxVal, cv::Point maxLoc)
+{
+    cv::minMaxLoc(response, nullptr, &maxVal, nullptr, &maxLoc);
+    double mean,sum;
+    sum = 0;
+
+    //sum response mat
+    int rows = response.rows;
+    int cols = response.cols;
+    for(int i=0;i<rows;i++)
+    {
+        float*data = response.ptr<float>(i);
+        for(int j=0;j<cols;j++)
+        {
+//            printf("data[j]:%f\t",data[j]);
+            sum=data[j]+sum;
+//            printf("sum:%f\t",sum);
+        }
+    }
+    mean = sum/(rows*cols);
+
+    //get confidence
+    confidence = maxVal/sqrt(mean);
+//    printf("maxval:%f sum:%f mean:%f confidence:%f\n",maxVal,sum,mean,confidence);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

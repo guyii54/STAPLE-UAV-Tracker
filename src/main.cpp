@@ -24,8 +24,8 @@
 #include <opencv2/videoio.hpp>
 
 #define TEST_FPS
-#define SAVE_VIDEO
-//#define GROUNDTRUTH
+//#define SAVE_VIDEO
+#define GROUNDTRUTH
 //#define SHOWMAXANDMIN
 
 
@@ -41,7 +41,6 @@ int main(int argc, char * argv[])
 
       cv::Mat image;
       cv::Rect_<float> location;
-      cv::Rect_<float> truebound;
       cv::Rect_<float> overlap;
       double fps;
       double av_fps = 1;
@@ -61,12 +60,19 @@ int main(int argc, char * argv[])
      std::string filename;
      std::string suffix = "/000%03d.jpg";
      std::cin >> filename;
+//     filename = "boat1";
 #else
    std::string read_path = "/home/nvidia/Videos/s_video/";
    std::string filename;
    std::string suffix = ".mp4";
    std::cin>>filename;
 #endif
+
+
+
+
+
+
 
 #ifdef GROUNDTRUTH
     std::string groundtruthsuffix = "/groundtruth.txt";
@@ -105,11 +111,11 @@ int main(int argc, char * argv[])
 //    std::cout<<"total:"<<image_files.size()<<std::endl;
     bool show_visualization = true;
 
-   
-    
 
     imshow("STAPLE", image);
     
+    staple.cfg.merge_factor = 0.3;
+
 #ifdef GROUNDTRUTH
     cv::rectangle(image, groundtruth_rect[0], cv::Scalar(0, 255, 0), 2);
     location = groundtruth_rect[0];   
@@ -121,7 +127,7 @@ int main(int argc, char * argv[])
 #ifdef TEST_FPS
     double start_fps,end_fps,dur_fps;
 #endif
-    
+
 
     for (frame_count=1;; frame_count++)
     {
@@ -221,7 +227,12 @@ int main(int argc, char * argv[])
 	    }
 	}
     }
+
+
+
     cv::destroyAllWindows();
+
+
 
     return 0;
 }
