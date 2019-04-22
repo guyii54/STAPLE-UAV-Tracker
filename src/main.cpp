@@ -25,6 +25,8 @@
 
 #define TEST_FPS
 #define SAVE_VIDEO
+//#define GROUNDTRUTH
+//#define SHOWMAXANDMIN
 
 
 using namespace cv;
@@ -54,19 +56,26 @@ int main(int argc, char * argv[])
       std::string iouSTRING;	//fps
       char iouvalue[10];     
 
+#ifdef GROUNDTRUTH
+     std::string read_path = "/home/nvidia/Videos/s_video/dataset720P/";
+     std::string filename;
+     std::string suffix = "/000%03d.jpg";
+     std::cin >> filename;
+#else
+   std::string read_path = "/home/nvidia/Videos/s_video/";
+   std::string filename;
+   std::string suffix = ".mp4";
+   std::cin>>filename;
+#endif
 
-    std::string read_path = "/home/nvidia/Videos/s_video/";
-    std::string filename;
-    std::string suffix = "/1(%d).jpg";
+#ifdef GROUNDTRUTH
     std::string groundtruthsuffix = "/groundtruth.txt";
-    std::cin >> filename;
-
-//    std::string read_path = "/home/nvidia/Videos/s_video/";
-//    std::string filename;
-//    std::string suffix = ".mp4";
-//    std::cin>>filename;
-
     std::string groundtruth_path = read_path+filename+groundtruthsuffix;
+    std::vector<cv::Rect_<float>> groundtruth_rect;
+   groundtruth_rect = getgroundtruth(groundtruth_path);
+#endif
+    
+    
     std::string w_read_path = read_path+filename+suffix;
 
 
@@ -77,13 +86,11 @@ int main(int argc, char * argv[])
 #ifdef SAVE_VIDEO
     std::string write_path="../processed/";
     std::string w_write_path = write_path+filename+".avi";
-    VideoWriter writer(w_write_path,CV_FOURCC('M','J','P','G'),24,Size(640,360));
-//    VideoWriter writer(w_write_path,CV_FOURCC('M','J','P','G'),24,Size(1280,720));
+//     VideoWriter writer(w_write_path,CV_FOURCC('M','J','P','G'),24,Size(640,360));
+   VideoWriter writer(w_write_path,CV_FOURCC('M','J','P','G'),24,Size(1280,720));
 #endif
 
-   std::vector<cv::Rect_<float>> groundtruth_rect;
-
-   groundtruth_rect = getgroundtruth(groundtruth_path);
+   
    
    
 //    for (size_t i = 0; i < groundtruth_rect.size(); ++i)
@@ -100,14 +107,21 @@ int main(int argc, char * argv[])
 
    
     
-    cv::rectangle(image, groundtruth_rect[0], cv::Scalar(0, 255, 0), 2);
-    imshow("STAPLE", image);
-    location = groundtruth_rect[0];
-//     location = selectROI("STAPLE",image);
 
+    imshow("STAPLE", image);
+    
+#ifdef GROUNDTRUTH
+    cv::rectangle(image, groundtruth_rect[0], cv::Scalar(0, 255, 0), 2);
+    location = groundtruth_rect[0];   
+#else
+    location = selectROI("STAPLE",image);
+#endif
+
+    
 #ifdef TEST_FPS
     double start_fps,end_fps,dur_fps;
 #endif
+    
 
     for (frame_count=1;; frame_count++)
     {
@@ -115,24 +129,34 @@ int main(int argc, char * argv[])
 
         if (frame_count == 1)
         {
+            //init tracker
             staple.tracker_staple_initialize(image, location);
             staple.tracker_staple_train(image, true);
         }
         else
         {
+            //update tracker
             cap >> image;
-	    if(image.empty())
-	    {
-	      av_iou = av_iou/frame_count;
-	      cout<<"av_iou:"<<av_iou<<endl;
-	      cout<<"video empty!"<<endl;
-	      break;
-	    }
+            if(image.empty())
+            {
+                av_iou = av_iou/frame_count;
+                cout<<"av_iou:"<<av_iou<<endl;
+                cout<<"first size:"<<staple.firstroi<<endl;
+                cout<<"video empty!"<<endl;
+                break;
+            }
             start_fps = clock();
             location = staple.tracker_staple_update(image);
             staple.tracker_staple_train(image, false);
-	    overlap = location & groundtruth_rect[frame_count];
+            //upate done
+#ifdef GROUNDTRUTH
+            //get iou
+            overlap = location & groundtruth_rect[frame_count];
+            iou = overlap.area()/(location.area()+groundtruth_rect[frame_count].area()-overlap.area());
+            av_iou += iou;
+#endif	    
         }
+
 #ifdef TEST_FPS
         end_fps = clock();
         dur_fps =end_fps-start_fps;
@@ -142,36 +166,56 @@ int main(int argc, char * argv[])
 #endif
 
 //         result_rects.push_back(location);
-	iou = overlap.area()/(location.area()+groundtruth_rect[frame_count].area()-overlap.area());
-	av_iou += iou;
 
-        if (show_visualization)
-        {
+
+    if (show_visualization)
+    {
 	  sprintf(fpsvalue,"%.2f",fps);
 	  fpsSTRING = "fps:";
 	  fpsSTRING += fpsvalue;
+      cv::putText(image, fpsSTRING,cv::Point(20, 40),FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 255), 2);
+
+
+//***************show location box*******************
+      cv::rectangle(image, location, cv::Scalar(0, 0, 255), 2);
 	  
+
+
+
+//***************show groundtruth box****************
+#ifdef GROUNDTRUTH
 	  sprintf(iouvalue,"%.3f",iou);
 	  iouSTRING = "iou:";
 	  iouSTRING += iouvalue;
-	  
-	  cv::putText(image, fpsSTRING,cv::Point(20, 40),FONT_HERSHEY_SIMPLEX, 1,
-	      cv::Scalar(0, 255, 255), 2);
 	  cv::putText(image, iouSTRING,cv::Point(20, 68),FONT_HERSHEY_SIMPLEX,1,
 	      cv::Scalar(0, 255, 255), 2);
 	  cv::rectangle(image, groundtruth_rect[frame_count], cv::Scalar(0, 255, 0), 2);
-	  cv::rectangle(image, location, cv::Scalar(0, 0, 255), 2);
+#endif
+	  
+	  
+
+//********show max and min box of search space********
+#ifdef SHOWMAXANDMIN
+      int num_scale = staple.rects.size();
+      cv::rectangle(image, staple.rects[0], cv::Scalar(210, 188, 45), 1);
+      cv::rectangle(image, staple.rects[num_scale-1], cv::Scalar(210, 188, 45), 1);
+#endif
+
+
 // 	    cv::rectangle(image, overlap, cv::Scalar(0, 0, 255), 2);
 	  cv::imshow("STAPLE", image);
+
 
 #ifdef SAVE_VIDEO
         writer << image;
 #endif
-            char key = cv::waitKey(10);
-            if (key == 27 || key == 'q' || key == 'Q')
+
+        char key = cv::waitKey(10);
+        if (key == 27 || key == 'q' || key == 'Q')
 	    {
 	      av_iou = av_iou/frame_count;
 	      cout<<"average of iou:"<<av_iou<<endl;
+          cout<<"first size:"<<staple.firstroi<<endl;
 	      break;
         
 	    }
@@ -210,13 +254,15 @@ std::vector<cv::Rect_<float>> getgroundtruth(std::string txt_file)
         << " can not be read" << std::endl;
     std::string line;
 //     float x1, y1, x2, y2, x3, y3, x4, y4;
-    float xmin,xmax,ymin,ymax;
+    float xmin,xmax,ymin,ymax,width,height;
     while (getline(gt, line)) 
     {
-//         std::replace(line.begin(), line.end(), ',', ' ');
+        std::replace(line.begin(), line.end(), ',', ' ');
         std::stringstream ss;
         ss.str(line);
-        ss >> xmin>> xmax >> ymin >>ymax;
+        ss >> xmin>> ymin >> width >>height;
+    xmax = xmin+width;
+    ymax = ymin+height;
         std::vector<cv::Point2f>polygon;
         polygon.push_back(cv::Point2f(xmin,ymin));
         polygon.push_back(cv::Point2f(xmax,ymin));

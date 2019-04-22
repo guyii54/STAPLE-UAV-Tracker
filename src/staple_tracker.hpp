@@ -27,23 +27,32 @@ struct staple_cfg
     double output_sigma_factor = 1/16.0; // standard deviation for the desired translation filter output
     double lambda = 1e-3;               // egularization weight
     double learning_rate_cf = 0.01;     // HOG model learning rate
-    double merge_factor = 0.3;          // fixed interpolation factor - how to linearly combine the two responses
+//     double merge_factor = 0.3;          // fixed interpolation factor - how to linearly combine the two responses
+    double merge_factor = 0.3;
     const char * merge_method = "const_factor";
     bool den_per_channel = false;
 
     // scale related
     bool scale_adaptation = true;
     int hog_scale_cell_size = 4;         // Default DSST=4
+//     double learning_rate_scale = 0.025;	//original
     double learning_rate_scale = 0.025;
     double scale_sigma_factor = 1/4.0;
     int num_scales = 33;
     double scale_model_factor = 1.0;
-    double scale_step = 1.02;
+    double scale_step = 1.03;
     double scale_model_max_area = 32*16;
+    //new
+//     double w_scale_step = 1.02;
+//     double h_scale_step = 1.02;
+//     double h_nscale = 5;
+//     double w_nscale = 5;
 
     // debugging stuff
     int visualization = 0;              // show output bbox on frame
     int visualization_dbg = 0;          // show also per-pixel scores, desired response and filter output
+
+
 
     cv::Point_<float> init_pos;
     cv::Size target_sz;
@@ -66,6 +75,11 @@ public:
     void tracker_staple_train(const cv::Mat &im, bool first);
     void tracker_staple_initialize(const cv::Mat &im, cv::Rect_<float> region);
     cv::Rect tracker_staple_update(const cv::Mat &im);
+    staple_cfg cfg;
+    std::vector<cv::Rect> rects;
+
+    cv::Rect firstroi;
+
 
 protected:
     staple_cfg default_parameters_staple(staple_cfg cfg);
@@ -84,7 +98,7 @@ protected:
     void getScaleSubwindow(const cv::Mat &im, cv::Point_<float> centerCoor, cv::Mat &output);
 
 private:
-    staple_cfg cfg;
+    
 
     cv::Point_<float> pos;
     cv::Size target_sz;

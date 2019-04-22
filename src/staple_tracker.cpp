@@ -15,6 +15,12 @@
 #include "staple_tracker.hpp"
 #include <iomanip>
 
+
+#define TESTCODE
+
+// using namespace std;
+using namespace cv;
+
 // mexResize got different results using different OpenCV, it's not trustable
 // I found this bug by running vot2015/tunnel, it happened when frameno+1==22 after frameno+1==21
 void STAPLE_TRACKER::mexResize(const cv::Mat &im, cv::Mat &output, cv::Size newsz, const char *method)
@@ -411,6 +417,7 @@ void STAPLE_TRACKER::tracker_staple_initialize(const cv::Mat &im, cv::Rect_<floa
     double w = region.width;
     double h = region.height;
 
+    firstroi = region;
     // cfg.init_pos.x = cx;
     // cfg.init_pos.y = cy;
     cfg.init_pos.x = region.x + region.width / 2.0;
@@ -665,15 +672,27 @@ void STAPLE_TRACKER::getScaleSubwindow(const cv::Mat &im, cv::Point_<float> cent
     int ch = 0;
     int total = 0;
 
+    rects.clear();
     for (int s = 0; s < cfg.num_scales; s++)
     {
         cv::Size_<float> patch_sz;
-
+        cv::Rect temp_rect;
         patch_sz.width = floor(base_target_sz.width * scale_factor * scale_factors.at<float>(s));
         patch_sz.height = floor(base_target_sz.height * scale_factor * scale_factors.at<float>(s));
 
+        temp_rect.width = patch_sz.width;
+        temp_rect.height = patch_sz.height;
+        temp_rect.x = pos.x - patch_sz.width/2;
+        temp_rect.y = pos.y - patch_sz.height/2;
+        rects.push_back(temp_rect);
+
+//        std::cout<<"cfgrects"<<cfg.rects[s]<<std::endl;
         cv::Mat im_patch_resized;
+
+        //1.subwindow with patch_sz
+        //2.resize with scale_model_sz
         getSubwindowFloor(im, centerCoor, scale_model_sz, patch_sz, im_patch_resized);
+
 
         // extract scale features
         cv::MatND temp;
@@ -1342,6 +1361,7 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
         cv::Mat scale_response;
         cv::dft(scale_responsef, scale_response, cv::DFT_SCALE|cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
 
+	
         //scale_response = real(ifft(sum(sf_num .* xsf, 1) ./ (sf_den + p.lambda) ));
 
         double maxVal = 0;
@@ -1352,7 +1372,8 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
         //recovered_scale = ind2sub(size(scale_response),find(scale_response == max(scale_response(:)), 1));
 
         int recovered_scale =  maxLoc.x;
-
+//        std::cout<<"maxVal:"<<maxVal<<std::endl;
+        printf("step: %0.3f\t%d\n",scale_factors.at<float>(recovered_scale),recovered_scale);
         // set the scale
         scale_factor = scale_factor * scale_factors.at<float>(recovered_scale);
 
@@ -1362,13 +1383,13 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
             scale_factor = max_scale_factor;
         }
 
-        std::cout<<"scale factor:"<<scale_factors.at<float>(recovered_scale)<<std::endl;
+//         std::cout<<"scale factor:"<<scale_factors.at<float>(recovered_scale)<<std::endl;
         // use new scale to update bboxes for target, filter, bg and fg models
         target_sz.width = round(base_target_sz.width * scale_factor);
         target_sz.height = round(base_target_sz.height * scale_factor);
 	
-// 	location.width = target_sz.width;
-// 	location.height = target_sz.height;
+	location.width = target_sz.width;
+	location.height = target_sz.height;
 
         float avg_dim = (target_sz.width + target_sz.height)/2.0;
 
