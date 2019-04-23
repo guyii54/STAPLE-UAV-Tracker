@@ -28,7 +28,7 @@ struct staple_cfg
     double lambda = 1e-3;               // egularization weight
     double learning_rate_cf = 0.01;     // HOG model learning rate
 //     double merge_factor = 0.3;          // fixed interpolation factor - how to linearly combine the two responses
-    double merge_factor = 0.7;
+    double merge_factor = 0.9;
     const char * merge_method = "const_factor";
     bool den_per_channel = false;
 

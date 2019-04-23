@@ -26,7 +26,7 @@
 #define TEST_FPS
 //#define SAVE_VIDEO
 #define GROUNDTRUTH
-//#define SHOWMAXANDMIN
+#define SHOWMAXANDMIN
 
 
 using namespace cv;
@@ -114,7 +114,6 @@ int main(int argc, char * argv[])
 
     imshow("STAPLE", image);
     
-    staple.cfg.merge_factor = 0.3;
 
 #ifdef GROUNDTRUTH
     cv::rectangle(image, groundtruth_rect[0], cv::Scalar(0, 255, 0), 2);
@@ -174,63 +173,62 @@ int main(int argc, char * argv[])
 //         result_rects.push_back(location);
 
 
-    if (show_visualization)
-    {
-	  sprintf(fpsvalue,"%.2f",fps);
-	  fpsSTRING = "fps:";
-	  fpsSTRING += fpsvalue;
-      cv::putText(image, fpsSTRING,cv::Point(20, 40),FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 255), 2);
+        if (show_visualization)
+        {
+            sprintf(fpsvalue,"%.2f",fps);
+            fpsSTRING = "fps:";
+            fpsSTRING += fpsvalue;
+            cv::putText(image, fpsSTRING,cv::Point(20, 40),FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 255), 2);
 
 
 //***************show location box*******************
-      cv::rectangle(image, location, cv::Scalar(0, 0, 255), 2);
+            cv::rectangle(image, location, cv::Scalar(0, 0, 255), 2);
 	  
 
 
 
 //***************show groundtruth box****************
 #ifdef GROUNDTRUTH
-	  sprintf(iouvalue,"%.3f",iou);
-	  iouSTRING = "iou:";
-	  iouSTRING += iouvalue;
-	  cv::putText(image, iouSTRING,cv::Point(20, 68),FONT_HERSHEY_SIMPLEX,1,
-	      cv::Scalar(0, 255, 255), 2);
-	  cv::rectangle(image, groundtruth_rect[frame_count], cv::Scalar(0, 255, 0), 2);
+            sprintf(iouvalue,"%.3f",iou);
+            iouSTRING = "iou:";
+            iouSTRING += iouvalue;
+            cv::putText(image, iouSTRING,cv::Point(20, 68),FONT_HERSHEY_SIMPLEX,1,cv::Scalar(0, 255, 255), 2);
+            cv::rectangle(image, groundtruth_rect[frame_count], cv::Scalar(0, 255, 0), 2);
 #endif
 	  
 	  
 
 //********show max and min box of search space********
 #ifdef SHOWMAXANDMIN
-      int num_scale = staple.rects.size();
-      cv::rectangle(image, staple.rects[0], cv::Scalar(210, 188, 45), 1);
-      cv::rectangle(image, staple.rects[num_scale-1], cv::Scalar(210, 188, 45), 1);
+            int num_scale = staple.rects.size();
+            cv::rectangle(image, staple.rects[0], cv::Scalar(210, 188, 45), 1);
+            cv::rectangle(image, staple.rects[num_scale-1], cv::Scalar(210, 188, 45), 1);
 #endif
 
 
 // 	    cv::rectangle(image, overlap, cv::Scalar(0, 0, 255), 2);
-	  cv::imshow("STAPLE", image);
+            cv::imshow("STAPLE", image);
 
 
 #ifdef SAVE_VIDEO
-        writer << image;
+            writer << image;
 #endif
 
-        char key = cv::waitKey(10);
-        if (key == 27 || key == 'q' || key == 'Q')
-	    {
-	      av_iou = av_iou/frame_count;
-	      cout<<"average of iou:"<<av_iou<<endl;
-          cout<<"first size:"<<staple.firstroi<<endl;
-	      break;
-        
-	    }
-	}
+            char key = cv::waitKey(10);
+            if (key == 27 || key == 'q' || key == 'Q')
+            {
+              av_iou = av_iou/frame_count;
+              cout<<"average of iou:"<<av_iou<<endl;
+              cout<<"first size:"<<staple.firstroi<<endl;
+              break;
+
+            }
+        }
     }
 
-
-
+//    printf("1\n");
     cv::destroyAllWindows();
+//    printf("2\n");
 
 
 
