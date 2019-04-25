@@ -27,6 +27,7 @@
 //#define SAVE_VIDEO
 #define GROUNDTRUTH
 #define SHOWMAXANDMIN
+#define SAVEDATA
 
 
 using namespace cv;
@@ -49,6 +50,7 @@ int main(int argc, char * argv[])
       double time_used;
       int frame_count;
 
+
       
       std::string fpsSTRING;	//fps
       char fpsvalue[10];
@@ -69,6 +71,9 @@ int main(int argc, char * argv[])
 #endif
 
 
+#ifdef SAVEDATA
+      ofstream max_iou("../data.txt");
+#endif
 
 
 
@@ -158,8 +163,13 @@ int main(int argc, char * argv[])
             //get iou
             overlap = location & groundtruth_rect[frame_count];
             iou = overlap.area()/(location.area()+groundtruth_rect[frame_count].area()-overlap.area());
+//            printf("iou:%0.3f\n",iou);
             av_iou += iou;
-#endif	    
+#endif
+#ifdef SAVEDATA
+            max_iou<<iou<<endl;
+//            max_iou<<staple.cfmaxresponse<<" "<<staple.cfconfidence<<" "<<staple.pwpmaxresponse<<" "<<iou<<endl;
+#endif
         }
 
 #ifdef TEST_FPS

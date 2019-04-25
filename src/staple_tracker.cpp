@@ -411,6 +411,7 @@ void STAPLE_TRACKER::tracker_staple_initialize(const cv::Mat &im, cv::Rect_<floa
         cfg.grayscale_sequence = true;
     }
 
+    predict_rect = region;
     // xxx: only support 3 channels, TODO: fix updateHistModel,
     //assert(!cfg.grayscale_sequence);
 
@@ -746,6 +747,36 @@ void STAPLE_TRACKER::tracker_staple_train(const cv::Mat &im, bool first)
     cv::Mat im_patch_bg;
     getSubwindow(im, pos, norm_bg_area, bg_area, im_patch_bg);
 
+//    if(first)
+//    {
+//        lastroi = im(predict_rect);
+////        imshow("lastroi",lastroi);
+//        waitKey(30);
+//    }
+    double temp_learning_rate_cf;
+
+
+    //************essential! adaptive learning rate*************
+    if(cfconfidence > 2.5)
+    {
+        temp_learning_rate_cf = cfg.learning_rate_cf + 0.01;
+    }
+    else
+        temp_learning_rate_cf = cfg.learning_rate_cf;
+
+
+//    temp_learning_rate_cf = cfg.learning_rate_cf;
+
+//    cv::Mat currentroi;
+//    currentroi = im(predict_rect);
+//    double mse = compute_PSNR(lastroi,currentroi);
+//    printf("mse:%f\n",mse);
+//    imshow("currentroi",currentroi);
+//    imshow("lastroi",lastroi);
+//    waitKey(30);
+
+
+
     // compute feature map, of cf_response_size
     cv::MatND xt;
     getFeatureMap(im_patch_bg, cfg.feature_type, xt);
@@ -832,8 +863,8 @@ void STAPLE_TRACKER::tracker_staple_train(const cv::Mat &im, bool first)
         } else {
             // subsequent frames, update the model by linear interpolation
             for (int ch =  0; ch < xt.channels(); ch++) {
-                hf_den[ch] = (1 - cfg.learning_rate_cf) * hf_den[ch] + cfg.learning_rate_cf * new_hf_den[ch];
-                hf_num[ch] = (1 - cfg.learning_rate_cf) * hf_num[ch] + cfg.learning_rate_cf * new_hf_num[ch];
+                hf_den[ch] = (1 - temp_learning_rate_cf) * hf_den[ch] + temp_learning_rate_cf * new_hf_den[ch];
+                hf_num[ch] = (1 - temp_learning_rate_cf) * hf_num[ch] + temp_learning_rate_cf * new_hf_num[ch];
             }
 
             updateHistModel(false, im_patch_bg, cfg.learning_rate_pwp);
@@ -843,6 +874,11 @@ void STAPLE_TRACKER::tracker_staple_train(const cv::Mat &im, bool first)
             // [bg_hist, fg_hist] = updateHistModel(new_pwp_model, im_patch_bg, bg_area, fg_area, target_sz, p.norm_bg_area, p.n_bins, p.grayscale_sequence, bg_hist, fg_hist, p.learning_rate_pwp);
         }
     }
+
+//    lastroi = im(predict_rect);
+//    imshow("lastroi",lastroi);
+//    waitKey(30);
+
 
     // SCALE UPDATE
     if (cfg.scale_adaptation) {
@@ -1295,18 +1331,17 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
 
     // ESTIMATION
 
-
-    double cfval,confidence_cf;
+    //adaptive merge_factor
     cv::Point cfLoc;
-    getconfidence(response_cf,confidence_cf,cfval,cfLoc);
+    getconfidence(response_cf,cfconfidence,cfmaxresponse,cfLoc);
 
-    double pwpval,confidence_pwp;
+
     cv::Point pwpLoc;
-    getconfidence(response_pwp,confidence_pwp,pwpval,pwpLoc);
+    getconfidence(response_pwp,pwpconfidence,pwpmaxresponse,pwpLoc);
 
     cv::Mat response;
-//    cfg.merge_factor = confidence_pwp/(confidence_cf+confidence_pwp);
-    printf("c_hog:%f\t c_cn:%f\t factor:%f\n",confidence_cf,confidence_pwp,cfg.merge_factor);
+    cfg.merge_factor = pwpconfidence/(cfconfidence+pwpconfidence);
+//    printf("c_hog:%0.3f\t c_cn:%0.3f\t factor:%0.3f\n",confidence_cf,confidence_pwp,cfg.merge_factor);
     mergeResponses(response_cf, response_pwp, response);
 //    std::cout<<"cf response:"<<cfval<<std::endl;
 //    std::cout<<"pwp response:"<<pwpval<<std::endl;
@@ -1317,7 +1352,11 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
     cv::minMaxLoc(response, nullptr, &maxVal, nullptr, &maxLoc);
     //[row, col] = find(response == max(response(:)), 1);
 
-    //std::cout << "maxLoc = " << maxLoc << std::endl;
+    printf("max value:%f\n",maxVal);
+
+    maxresponse = maxVal;
+
+//    std::cout << "maxLoc = " << maxLoc << std::endl;
 
     float centerx = (1 + norm_delta_area.width) / 2 - 1;
     float centery = (1 + norm_delta_area.height) / 2 - 1;
@@ -1433,10 +1472,12 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
         area_resize_factor = sqrt(cfg.fixed_area / (float)(bg_area.width * bg_area.height));
     }
 
+    predict_rect = location;
+
     return location;
 }
 
-void STAPLE_TRACKER::getconfidence(cv::Mat response, double &confidence, double maxVal, cv::Point maxLoc)
+void STAPLE_TRACKER::getconfidence(cv::Mat response, double &confidence, double &maxVal, cv::Point maxLoc)
 {
     cv::minMaxLoc(response, nullptr, &maxVal, nullptr, &maxLoc);
     double mean,sum;
@@ -1462,7 +1503,48 @@ void STAPLE_TRACKER::getconfidence(cv::Mat response, double &confidence, double 
 //    printf("maxval:%f sum:%f mean:%f confidence:%f\n",maxVal,sum,mean,confidence);
 }
 
+double STAPLE_TRACKER::compute_PSNR(cv::Mat lastroi, cv::Mat currentroi)
+{
+    cv::Mat mat1 = lastroi.clone();
+    cv::Mat mat2 = currentroi.clone();
 
+    int rows = mat2.rows;
+    int cols = mat2.cols;
+    if(rows != mat1.rows || cols != mat2.cols)
+    {
+        printf("size not the same,now convert\n");
+        cv::resize(mat1,mat1,cv::Size(cols,rows));
+    }
+
+//    std::cout<<mat1.size<<std::endl;
+//    std::cout<<mat2.size<<std::endl;
+    mat1.convertTo(mat1,CV_32F);
+    mat2.convertTo(mat2,CV_32F);
+
+    Mat diff;
+    diff.convertTo(diff,CV_32F);
+
+    cv::absdiff(mat1,mat2,diff);
+//    diff = diff.mul(diff);      //diff^2
+
+    Scalar s = cv::sum(diff);
+
+    double sse;
+    if(mat2.channels()==3)
+        sse = s.val[0]+s.val[2]+s.val[3];
+    else
+        sse = s.val[0];
+
+//    std::cout<<sse<<std::endl;
+    int TotalElement = mat2.channels()*mat2.total();
+
+    printf("sse:%f,TotalElement:%d\n",sse,TotalElement);
+
+    double mse = (sse / (double)TotalElement);
+
+    return mse;
+
+}
 
 
 

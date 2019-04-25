@@ -80,6 +80,13 @@ public:
 
     cv::Rect firstroi;
 
+    cv::Mat lastroi;
+
+    double maxresponse;
+    double cfmaxresponse,pwpmaxresponse;
+    double confidence;
+    double cfconfidence,pwpconfidence;
+
 
 protected:
     staple_cfg default_parameters_staple(staple_cfg cfg);
@@ -97,13 +104,16 @@ protected:
     void mergeResponses(const cv::Mat &response_cf, const cv::Mat &response_pwp, cv::Mat &response);
     void getScaleSubwindow(const cv::Mat &im, cv::Point_<float> centerCoor, cv::Mat &output);
     void sumMat(cv::Mat &im, double sum, double mean);
-    void getconfidence(cv::Mat response, double &confidence, double maxVal, cv::Point maxLoc);
+    void getconfidence(cv::Mat response, double &confidence, double &maxVal, cv::Point maxLoc);
+    double compute_PSNR(cv::Mat lastroi, cv::Mat currentroi);
 
 private:
     
 
     cv::Point_<float> pos;
     cv::Size target_sz;
+
+    cv::Rect predict_rect;
 
     cv::Size bg_area;
     cv::Size fg_area;
