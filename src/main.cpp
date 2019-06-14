@@ -23,11 +23,13 @@
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 
+
 #define TEST_FPS
 //#define SAVE_VIDEO
-#define GROUNDTRUTH
-#define SHOWMAXANDMIN
-#define SAVEDATA
+//#define GROUNDTRUTH
+//#define SHOWMAXANDMIN
+//#define SAVEDATA
+
 
 
 using namespace cv;
@@ -37,9 +39,59 @@ using namespace std;
 cv::Rect_<float> getAxisAlignedBB(std::vector<cv::Point2f> polygon);
 std::vector<cv::Rect_<float>> getgroundtruth(std::string txt_file);
 
+
+
+//int main(int argc, char * argv[])
+//{
+//    cv::Mat image;
+//    cv::Rect_<float> location;
+//    cv::Rect_<float> overlap;
+//    double fps;
+//    double av_fps = 1;
+//    float iou;
+//    float av_iou = 1;
+//    double time_used;
+//    int frame_count;
+
+//    std::string fpsSTRING;	//fps
+//    char fpsvalue[10];
+//    std::string iouSTRING;	//fps
+//    char iouvalue[10];
+
+//    bool RUNDATASET = false;
+//    bool DEMO = true;
+//    bool annotation = true;
+
+
+//    //**********enter demo path
+//    std::string demo_path = "/home/nvidia/Videos/s_video/dataset720P/";
+//    std::string filename;
+//    std::string suffix = "/000%03d.jpg";
+//    printf("please enter sequence name:\n");
+//    std::cin >> filename;
+
+
+//    if(RUNDATASET = true)
+//    {
+//        if(DEMO = true)
+//        {
+//            printf("cannot run demo while run dataset");
+//            return 0;
+//        }
+
+//    }
+//    else if(demo = true)
+//    {
+
+//    }
+
+//}
+
+
+
+
 int main(int argc, char * argv[])
 {
-
       cv::Mat image;
       cv::Rect_<float> location;
       cv::Rect_<float> overlap;
@@ -64,9 +116,11 @@ int main(int argc, char * argv[])
      std::cin >> filename;
 //     filename = "boat1";
 #else
-   std::string read_path = "/home/nvidia/Videos/s_video/";
+//   std::string read_path = "/home/nvidia/Videos/s_video/";
+   std::string read_path = "/media/nvidia/叶云桐/UAV123/data_seq/UAV123/";
    std::string filename;
-   std::string suffix = ".mp4";
+//   std::string suffix = ".mp4";
+   std::string suffix = "/000%03d.jpg";
    std::cin>>filename;
 #endif
 
@@ -167,7 +221,7 @@ int main(int argc, char * argv[])
             av_iou += iou;
 #endif
 #ifdef SAVEDATA
-            max_iou<<iou<<endl;
+            max_iou<<staple.cfg.merge_factor<<iou<<endl;
 //            max_iou<<staple.cfmaxresponse<<" "<<staple.cfconfidence<<" "<<staple.pwpmaxresponse<<" "<<iou<<endl;
 #endif
         }

@@ -1341,7 +1341,7 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
 
     cv::Mat response;
     cfg.merge_factor = pwpconfidence/(cfconfidence+pwpconfidence);
-//    printf("c_hog:%0.3f\t c_cn:%0.3f\t factor:%0.3f\n",confidence_cf,confidence_pwp,cfg.merge_factor);
+    printf("c_hog:%0.3f\t c_cn:%0.3f\t factor:%0.3f\n",cfconfidence,pwpconfidence,cfg.merge_factor);
     mergeResponses(response_cf, response_pwp, response);
 //    std::cout<<"cf response:"<<cfval<<std::endl;
 //    std::cout<<"pwp response:"<<pwpval<<std::endl;
@@ -1352,7 +1352,7 @@ cv::Rect STAPLE_TRACKER::tracker_staple_update(const cv::Mat &im)
     cv::minMaxLoc(response, nullptr, &maxVal, nullptr, &maxLoc);
     //[row, col] = find(response == max(response(:)), 1);
 
-    printf("max value:%f\n",maxVal);
+//    printf("max value:%f\n",maxVal);
 
     maxresponse = maxVal;
 
